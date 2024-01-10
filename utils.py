@@ -12,7 +12,7 @@ def normalize_data(data, scaler=None):
     data = np.asarray(data, dtype=np.float32)
     if np.any(sum(np.isnan(data))):
         data = np.nan_to_num(data)
-
+    # 最大最小值归一化
     if scaler is None:
         scaler = MinMaxScaler()
         scaler.fit(data)
@@ -22,6 +22,7 @@ def normalize_data(data, scaler=None):
     return data, scaler
 
 
+# 维度默认已知
 def get_data_dim(dataset):
     """
     :param dataset: Name of dataset
@@ -77,6 +78,7 @@ def get_data(dataset, max_train_size=None, max_test_size=None,
     print("load data of:", dataset)
     print("train: ", train_start, train_end)
     print("test: ", test_start, test_end)
+
     x_dim = get_data_dim(dataset)
     f = open(os.path.join(prefix, dataset + "_train.pkl"), "rb")
     train_data = pickle.load(f).reshape((-1, x_dim))[train_start:train_end, :]
@@ -112,8 +114,8 @@ class SlidingWindowDataset(Dataset):
         self.horizon = horizon
 
     def __getitem__(self, index):
-        x = self.data[index : index + self.window]
-        y = self.data[index + self.window : index + self.window + self.horizon]
+        x = self.data[index: index + self.window]
+        y = self.data[index + self.window: index + self.window + self.horizon]
         return x, y
 
     def __len__(self):
@@ -124,21 +126,23 @@ def create_data_loaders(train_dataset, batch_size, val_split=0.1, shuffle=True, 
     train_loader, val_loader, test_loader = None, None, None
     if val_split == 0.0:
         print(f"train_size: {len(train_dataset)}")
-        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
 
     else:
         dataset_size = len(train_dataset)
         indices = list(range(dataset_size))
         split = int(np.floor(val_split * dataset_size))
+        # 将索引打乱
         if shuffle:
             np.random.shuffle(indices)
         train_indices, val_indices = indices[split:], indices[:split]
 
+        # 用于从给定的索引集合中随机抽样创建一个子集
         train_sampler = SubsetRandomSampler(train_indices)
         valid_sampler = SubsetRandomSampler(val_indices)
 
-        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
-        val_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, sampler=valid_sampler)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
+        val_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=valid_sampler)
 
         print(f"train_size: {len(train_indices)}")
         print(f"validation_size: {len(val_indices)}")
@@ -154,6 +158,7 @@ def plot_losses(losses, save_path="", plot=True):
     """
     :param losses: dict with losses
     :param save_path: path where plots get saved
+    :param plot
     """
 
     plt.plot(losses["train_forecast"], label="Forecast loss")
@@ -236,8 +241,8 @@ def adjust_anomaly_scores(scores, dataset, is_train, lookback):
     sep_cuma = np.cumsum(md['num_values'].values) - lookback
     sep_cuma = sep_cuma[:-1]
     buffer = np.arange(1, 20)
-    i_remov = np.sort(np.concatenate((sep_cuma, np.array([i+buffer for i in sep_cuma]).flatten(),
-                                      np.array([i-buffer for i in sep_cuma]).flatten())))
+    i_remov = np.sort(np.concatenate((sep_cuma, np.array([i + buffer for i in sep_cuma]).flatten(),
+                                      np.array([i - buffer for i in sep_cuma]).flatten())))
     i_remov = i_remov[(i_remov < len(adjusted_scores)) & (i_remov >= 0)]
     i_remov = np.sort(np.unique(i_remov))
     if len(i_remov) != 0:
@@ -246,10 +251,10 @@ def adjust_anomaly_scores(scores, dataset, is_train, lookback):
     # Normalize each concatenated part individually
     sep_cuma = np.cumsum(md['num_values'].values) - lookback
     s = [0] + sep_cuma.tolist()
-    for c_start, c_end in [(s[i], s[i+1]) for i in range(len(s)-1)]:
-        e_s = adjusted_scores[c_start: c_end+1]
+    for c_start, c_end in [(s[i], s[i + 1]) for i in range(len(s) - 1)]:
+        e_s = adjusted_scores[c_start: c_end + 1]
 
-        e_s = (e_s - np.min(e_s))/(np.max(e_s) - np.min(e_s))
-        adjusted_scores[c_start: c_end+1] = e_s
+        e_s = (e_s - np.min(e_s)) / (np.max(e_s) - np.min(e_s))
+        adjusted_scores[c_start: c_end + 1] = e_s
 
     return adjusted_scores

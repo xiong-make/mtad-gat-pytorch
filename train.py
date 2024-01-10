@@ -4,13 +4,12 @@ import torch.nn as nn
 
 from args import get_parser
 from utils import *
-from mtad_gat import MTAD_GAT
+from mtadgat import MtadGat
 from prediction import Predictor
 from training import Trainer
 
-
 if __name__ == "__main__":
-
+    # 如果当前日期是2023年1月15日，时间是下午3点30分45秒，那么输出将是："15012023_153045"
     id = datetime.now().strftime("%d%m%Y_%H%M%S")
 
     parser = get_parser()
@@ -30,6 +29,7 @@ if __name__ == "__main__":
     log_tensorboard = args.log_tensorboard
     group_index = args.group[0]
     index = args.group[2:]
+    # 这行代码的作用是将一个Python的args对象转换为字符串，其中包含了该对象的所有属性及其对应的值。
     args_summary = str(args.__dict__)
     print(args_summary)
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     if target_dims is None:
         out_dim = n_features
         print(f"Will forecast and reconstruct all {n_features} input features")
-    elif type(target_dims) == int:
+    elif isinstance(target_dims, int):
         print(f"Will forecast and reconstruct input feature: {target_dims}")
         out_dim = 1
     else:
@@ -71,7 +71,7 @@ if __name__ == "__main__":
         train_dataset, batch_size, val_split, shuffle_dataset, test_dataset=test_dataset
     )
 
-    model = MTAD_GAT(
+    model = MtadGat(
         n_features,
         window_size,
         out_dim,

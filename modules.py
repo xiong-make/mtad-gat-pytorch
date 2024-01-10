@@ -11,14 +11,19 @@ class ConvLayer(nn.Module):
 
     def __init__(self, n_features, kernel_size=7):
         super(ConvLayer, self).__init__()
+        # 常数填充
         self.padding = nn.ConstantPad1d((kernel_size - 1) // 2, 0.0)
         self.conv = nn.Conv1d(in_channels=n_features, out_channels=n_features, kernel_size=kernel_size)
         self.relu = nn.ReLU()
 
     def forward(self, x):
+        # x shape (b, n, k): b - batch size, n - window size, k - number of features
+        # eg x (256, 100, 38)
         x = x.permute(0, 2, 1)
+        # x (256, 38, 106)
         x = self.padding(x)
         x = self.relu(self.conv(x))
+        # x (256, 38, 100)
         return x.permute(0, 2, 1)  # Permute back
 
 
@@ -53,6 +58,9 @@ class FeatureAttentionLayer(nn.Module):
             a_input_dim = 2 * self.embed_dim
 
         self.lin = nn.Linear(lin_input_dim, self.embed_dim)
+
+        # 创建了一个大小为 (a_input_dim, 1) 的可学习参数，该参数的初始值未被明确指定，
+        # 而是由 PyTorch 根据内存状态确定。在神经网络训练过程中，这个参数的值会根据模型的损失函数和梯度下降等优化算法进行更新。
         self.a = nn.Parameter(torch.empty((a_input_dim, 1)))
         nn.init.xavier_uniform_(self.a.data, gain=1.414)
 
@@ -66,13 +74,14 @@ class FeatureAttentionLayer(nn.Module):
         # x shape (b, n, k): b - batch size, n - window size, k - number of features
         # For feature attention we represent a node as the values of a particular feature across all timestamps
 
+        # x shape (b, k, n)
         x = x.permute(0, 2, 1)
 
         # 'Dynamic' GAT attention
         # Proposed by Brody et. al., 2021 (https://arxiv.org/pdf/2105.14491.pdf)
         # Linear transformation applied after concatenation and attention layer applied after leakyrelu
         if self.use_gatv2:
-            a_input = self._make_attention_input(x)                 # (b, k, k, 2*window_size)
+            a_input = self._make_attention_input(x)                 # (b, k, k, 2*n)
             a_input = self.leakyrelu(self.lin(a_input))             # (b, k, k, embed_dim)
             e = torch.matmul(a_input, self.a).squeeze(3)            # (b, k, k, 1)
 
@@ -95,7 +104,8 @@ class FeatureAttentionLayer(nn.Module):
         return h.permute(0, 2, 1)
 
     def _make_attention_input(self, v):
-        """Preparing the feature attention mechanism.
+        """
+        Preparing the feature attention mechanism.
         Creating matrix with all possible combinations of concatenations of node.
         Each node consists of all values of that node within the window
             v1 || v1,

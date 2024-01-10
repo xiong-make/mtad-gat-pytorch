@@ -4,7 +4,7 @@ import datetime
 
 from args import get_parser, str2bool
 from utils import *
-from mtad_gat import MTAD_GAT
+from mtadgat import MtadGat
 from prediction import Predictor
 
 if __name__ == "__main__":
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     train_dataset = SlidingWindowDataset(x_train, window_size, target_dims)
     test_dataset = SlidingWindowDataset(x_test, window_size, target_dims)
 
-    model = MTAD_GAT(
+    model = MtadGat(
         n_features,
         window_size,
         out_dim,
