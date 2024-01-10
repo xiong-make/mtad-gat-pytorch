@@ -120,9 +120,10 @@ class FeatureAttentionLayer(nn.Module):
             ...
             vK || vK,
         """
+        # v (b, k, n)
 
         K = self.num_nodes
-        blocks_repeating = v.repeat_interleave(K, dim=1)  # Left-side of the matrix
+        blocks_repeating = v.repeat_interleave(K, dim=1)  # Left-side of the matrix (b, k*k, n)
         blocks_alternating = v.repeat(1, K, 1)  # Right-side of the matrix
         combined = torch.cat((blocks_repeating, blocks_alternating), dim=2)  # (b, K*K, 2*window_size)
 
